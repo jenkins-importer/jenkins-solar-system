@@ -43,6 +43,7 @@ pipeline {
             options { timestamps() }
             steps {
                 sh 'npm install --no-audit'
+                sh 'exit 1'
             }
         }
 
