@@ -49,6 +49,7 @@ podTemplate(
         stage('Unit Testing') {
             node('nodejs-pod') {
                 container('node-18') {
+                    checkout scm
                     withCredentials([usernamePassword(credentialsId: 'mongo-db-credentials', passwordVariable: 'MONGO_PASSWORD', usernameVariable: 'MONGO_USERNAME')]) {
                         sh 'node -v'
                         sh 'npm test' 
