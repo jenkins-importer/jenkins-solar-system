@@ -1,7 +1,13 @@
 @Library('dasher-trusted-shared-library@featureTrivyScan') _
 
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            cloud 'dasher-prod-k8s-us-east'
+            yamlFile 'k8s-agent.yaml'
+            defaultContainer 'node-18'
+        }
+    }
 
     tools {
         nodejs 'nodejs-22-6-0'
@@ -25,6 +31,7 @@ pipeline {
         stage('Installing Dependencies') {
             options { timestamps() }
             steps {
+                sh 'node -v'
                 sh 'npm install --no-audit'
             }
         }
@@ -34,6 +41,7 @@ pipeline {
                 stage('NPM Dependency Audit') {
                     steps {
                         sh '''
+                            node -v
                             npm audit --audit-level=critical
                             echo $?
                         '''
@@ -58,9 +66,7 @@ pipeline {
         stage('Unit Testing') {
             options { retry(2) }
             steps {
-                sh 'echo Colon-Separated - $MONGO_DB_CREDS'
-                sh 'echo Username - $MONGO_DB_CREDS_USR'
-                sh 'echo Password - $MONGO_DB_CREDS_PSW'
+                sh 'node -v'
                 sh 'npm test' 
             }
         }    
@@ -68,6 +74,7 @@ pipeline {
         stage('Code Coverage') {
             steps {
                 catchError(buildResult: 'SUCCESS', message: 'Oops! it will be fixed in future releases', stageResult: 'UNSTABLE') {
+                    sh 'node -v'
                     sh 'npm run coverage'
                 }
             }
@@ -91,6 +98,7 @@ pipeline {
         // } 
 
         stage('Build Docker Image') {
+            agent any
             steps {
                 sh  'printenv'
                 sh  'docker build -t siddharth67/solar-system:$GIT_COMMIT .'
@@ -98,6 +106,7 @@ pipeline {
         }
 
         stage('Trivy Vulnerability Scanner') {
+            agent any
             steps {
                 script {
                     trivyScanScript.vulnerability(imageName:"siddharth67/solar-system:$GIT_COMMIT", severity:"LOW", exitCode:"0")
