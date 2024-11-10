@@ -90,10 +90,22 @@ pipeline {
                             image 'node:20-alpine'
                         }
                     }
-                    options { retry(2) }
-                    steps {
-                        sh 'node -v'
-                        sh 'npm test' 
+                    stages {
+                        stage ('Install Dependencies') {
+                            options { retry(2) }
+                            steps {
+                                sh 'node -v'
+                                sh 'npm install --no-audit' 
+                            }
+                        }
+
+                        stage ('Testing') {
+                            options { retry(2) }
+                            steps {
+                                sh 'node -v'
+                                sh 'npm test' 
+                            }
+                        }
                     }
                 }
             }
