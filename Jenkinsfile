@@ -33,6 +33,7 @@ pipeline {
             steps {
                 sh 'node -v'
                 sh 'npm install --no-audit'
+                stash(includes: 'node_modules/', name: 'solar-system-node-modules')
             }
         }
 
@@ -95,7 +96,8 @@ pipeline {
                             options { retry(2) }
                             steps {
                                 sh 'node -v'
-                                sh 'npm install --no-audit --cache .' 
+                                //sh 'npm install --no-audit --cache .' 
+                                unstash 'solar-system-node-modules'
                             }
                         }
 
