@@ -95,7 +95,7 @@ pipeline {
                             options { retry(2) }
                             steps {
                                 sh 'node -v'
-                                sh 'npm install --no-audit' 
+                                sh 'npm install --no-audit --cache .' 
                             }
                         }
 
