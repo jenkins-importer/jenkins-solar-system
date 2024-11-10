@@ -99,11 +99,15 @@ pipeline {
 
         stage('Trivy Vulnerability Scanner') {
             steps {
-                trivyScan.vulnerability("siddharth67/solar-system:$GIT_COMMIT")
+                script {
+                    trivyScan.vulnerability("siddharth67/solar-system:$GIT_COMMIT")
+                }
             }
             post {
                 always {
-                    trivyScan.reportsConverter()
+                    script {
+                        trivyScan.reportsConverter()
+                    }
 
                     publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: './', reportFiles: 'trivy-image-CRITICAL-results.html', reportName: 'Trivy Image Critical Vul Report', reportTitles: '', useWrapperFileDirectly: true])
 
