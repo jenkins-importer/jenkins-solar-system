@@ -1,6 +1,7 @@
-node {
+node('ubuntu-docker-jdk17-node20') {
     env.NODEJS_HOME = "${tool 'nodejs-22-6-0'}"
     env.PATH="${env.NODEJS_HOME}/bin:${env.PATH}"
+    env.MONGO_URI = "mongodb+srv://supercluster.d83jj.mongodb.net/superData"
 
     properties([
         disableConcurrentBuilds(abortPrevious: true) 
@@ -24,5 +25,12 @@ node {
                         stash(includes: 'node_modules/', name: 'solar-system-node-modules')
                     }
             }
-    }    
+    } 
+
+    stage('Unit Testing') {
+        withCredentials([usernamePassword(credentialsId: 'mongo-db-credentials', passwordVariable: 'MONGO_PASSWORD', usernameVariable: 'MONGO_USERNAME')]) {
+            sh 'node -v'
+            sh 'npm test' 
+        }
+    }       
 }
