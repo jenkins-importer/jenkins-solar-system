@@ -29,11 +29,20 @@ pipeline {
 
     stages {
         stage('Installing Dependencies') {
+            agent any
             options { timestamps() }
             steps {
-                sh 'node -v'
-                sh 'npm install --no-audit'
-                stash(includes: 'node_modules/', name: 'solar-system-node-modules')
+                cache(maxCacheSize: 550, caches: [
+                    arbitraryFileCache(
+                        cacheName: 'npm-dependecny-cache', 
+                        cacheValidityDecidingFile: 'package-lock.json', 
+                        includes: '**/*', 
+                        path: 'node_modules')
+                        ] ) {
+                            sh 'node -v'
+                            sh 'npm install --no-audit'
+                            stash(includes: 'node_modules/', name: 'solar-system-node-modules')
+                        }
             }
         }
 
@@ -70,6 +79,7 @@ pipeline {
                     options { retry(2) }
                     steps {
                         sh 'node -v'
+                        unstash 'solar-system-node-modules'
                         sh 'npm test' 
                     }
                 }
@@ -80,6 +90,7 @@ pipeline {
                         container('node-19') {
                             sh 'sleep 10s'
                             sh 'node -v'
+                            unstash 'solar-system-node-modules'
                             sh 'npm test' 
                         }
                     }
@@ -117,6 +128,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'SUCCESS', message: 'Oops! it will be fixed in future releases', stageResult: 'UNSTABLE') {
                     sh 'node -v'
+                    unstash 'solar-system-node-modules'
                     sh 'npm run coverage'
                 }
             }
