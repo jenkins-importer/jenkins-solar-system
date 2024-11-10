@@ -64,12 +64,40 @@ pipeline {
         }
 
         stage('Unit Testing') {
-            options { retry(2) }
-            steps {
-                sh 'node -v'
-                sh 'npm test' 
+            parallel {
+                stage('NodeJS 18') {
+                    options { retry(2) }
+                    steps {
+                        sh 'node -v'
+                        sh 'npm test' 
+                    }
+                }
+
+                stage('NodeJS 19') {
+                    options { retry(2) }
+                    steps {
+                        container('node-19') {
+                            sh 'sleep 10s'
+                            sh 'node -v'
+                            sh 'npm test' 
+                        }
+                    }
+                }
+
+                stage('NodeJS 20') {
+                    agent {
+                        docker {
+                            image 'node:20-alpine'
+                        }
+                    }
+                    options { retry(2) }
+                    steps {
+                        sh 'node -v'
+                        sh 'npm test' 
+                    }
+                }
             }
-        }    
+        }     
 
         stage('Code Coverage') {
             steps {
