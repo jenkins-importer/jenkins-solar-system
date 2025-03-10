@@ -1,13 +1,5 @@
-@Library('dasher-trusted-shared-library@featureTrivyScan') _
-
 pipeline {
-    agent {
-        kubernetes {
-            cloud 'dasher-prod-k8s-us-east'
-            yamlFile 'k8s-agent.yaml'
-            defaultContainer 'node-18'
-        }
-    }
+    agent any
 
     tools {
         nodejs 'nodejs-22-6-0'
@@ -18,8 +10,6 @@ pipeline {
         MONGO_DB_CREDS = credentials('mongo-db-credentials')
         MONGO_USERNAME = credentials('mongo-db-username')
         MONGO_PASSWORD = credentials('mongo-db-password')
-    //    SONAR_SCANNER_HOME = tool 'sonarqube-scanner-610';
-        GITEA_TOKEN = credentials('gitea-api-token')
     }
 
     options {
@@ -47,29 +37,12 @@ pipeline {
         }
 
         stage('Dependency Scanning') {
-            parallel {
-                stage('NPM Dependency Audit') {
-                    steps {
-                        sh '''
-                            node -v
-                            npm audit --audit-level=critical
-                            echo $?
-                        '''
-                    }
-                }
-
-                // stage('OWASP Dependency Check') {
-                //     steps {
-                //         dependencyCheck additionalArguments: '''
-                //             --scan \'./\' 
-                //             --out \'./\'  
-                //             --format \'ALL\' 
-                //             --disableYarnAudit \
-                //             --prettyPrint''', odcInstallation: 'OWASP-DepCheck-10'
-
-                //         dependencyCheckPublisher failedTotalCritical: 1, pattern: 'dependency-check-report.xml', stopBuild: false
-                //     }
-                // }
+            steps {
+                sh '''
+                    node -v
+                    npm audit --audit-level=critical
+                    echo $?
+                '''
             }
         }
 
@@ -87,13 +60,16 @@ pipeline {
                 stage('NodeJS 19') {
                     options { retry(2) }
                     steps {
-                        container('node-19') {
+                        agent {
+                            docker {
+                                image 'node:19-alpine'
+                            }
+                        }
                             sh 'sleep 10s'
                             sh 'node -v'
                             unstash 'solar-system-node-modules'
                             sh 'npm test' 
                         }
-                    }
                 }
 
                 stage('NodeJS 20') {
@@ -134,22 +110,7 @@ pipeline {
             }
         }
 
-        // stage('SAST - SonarQube') {
-        //     steps {
-        //         timeout(time: 60, unit: 'SECONDS') {
-        //             withSonarQubeEnv('sonar-qube-server') {
-        //                 sh 'echo $SONAR_SCANNER_HOME'
-        //                 sh '''
-        //                     $SONAR_SCANNER_HOME/bin/sonar-scanner \
-        //                         -Dsonar.projectKey=Solar-System-Project \
-        //                         -Dsonar.sources=app.js \
-        //                         -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info
-        //                 '''
-        //             }
-        //             waitForQualityGate abortPipeline: true
-        //         }
-        //     }
-        // } 
+    
 
         stage('Build Docker Image') {
             agent any
@@ -159,29 +120,6 @@ pipeline {
             }
         }
 
-        stage('Trivy Vulnerability Scanner') {
-            agent any
-            steps {
-                script {
-                    trivyScanScript.vulnerability(imageName:"siddharth67/solar-system:$GIT_COMMIT", severity:"LOW", exitCode:"0")
-                    trivyScanScript.vulnerability(imageName:"siddharth67/solar-system:$GIT_COMMIT", severity:"MEDIUM", exitCode:"0")
-                    trivyScanScript.vulnerability(imageName:"siddharth67/solar-system:$GIT_COMMIT", severity:"HIGH", exitCode:"0")
-                    trivyScanScript.vulnerability(imageName:"siddharth67/solar-system:$GIT_COMMIT", severity:"CRITICAL", exitCode:"1")
-                }
-            }
-            post {
-                always {
-                    script {
-                        trivyScan.reportsConverter()
-                    }
-
-                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: './', reportFiles: 'trivy-image-CRITICAL-results.html', reportName: 'Trivy Image Critical Vul Report', reportTitles: '', useWrapperFileDirectly: true])
-
-                    publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: './', reportFiles: 'trivy-image-MEDIUM-results.html', reportName: 'Trivy Image Medium Vul Report', reportTitles: '', useWrapperFileDirectly: true])
-
-                }
-            }
-        } 
 
         // stage('Push Docker Image') {
         //     steps {
